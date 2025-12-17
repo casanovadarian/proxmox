@@ -1,0 +1,5 @@
+default:
+  user: PVEAuditor@pve
+  token_name: exporter
+  token_value: c9a198cf-e635-4551-b9f9-72423967468a
+  verify_ssl: false

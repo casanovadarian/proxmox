@@ -1,0 +1,56 @@
+services:
+  prometheus:
+    container_name: prometheus
+    image: docker.uclv.cu/prom/prometheus:latest
+    restart: unless-stopped
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - monitor-net
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+
+  grafana:
+    container_name: grafana
+    image: docker.uclv.cu/grafana/grafana:latest
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=prometeus
+    networks:
+      - monitor-net
+
+  loki:
+    container_name: loki
+    image: docker.uclv.cu/grafana/loki:latest
+    restart: unless-stopped
+    ports:
+      - '3100:3100'
+    volumes:
+      - loki_data:/loki
+      - ./loki/config.yaml:/etc/loki/local-config.yaml
+    networks:
+      - monitor-net
+    command: '-config.file=/etc/loki/local-config.yaml'
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  loki_data:
+    driver: local
+
+networks:
+  monitor-net:
+    driver: bridge

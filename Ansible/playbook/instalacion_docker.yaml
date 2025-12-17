@@ -1,0 +1,121 @@
+---
+- name: Preparación del Servidor e Instalación de Docker
+  hosts: proxmox  # O el grupo de hosts donde quieres ejecutar esto (ej: hosts: webservers)
+  become: yes # Permite que Ansible ejecute las tareas con privilegios de sudo
+
+  tasks:
+
+    - name: Modificar ubuntu.sources
+      ansible.builtin.copy:
+        content: |
+          Types: deb
+          Suites: noble noble-updates noble-backports
+          Components: main restricted universe multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          URIs: http://repos.uclv.edu.cu/ubuntu/
+
+          Types: deb
+          Suites: noble-security
+          Components: main restricted universe multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          URIs: http://repos.uclv.edu.cu/ubuntu/
+
+        dest: /etc/apt/sources.list.d/ubuntu.sources
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: 1. Actualizar caché de paquetes (apt update)
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600 # Opcional: mantiene el caché válido por 1 hora
+
+    - name: 2. Actualizar todos los paquetes instalados (apt upgrade -y)
+      ansible.builtin.apt:
+        upgrade: dist
+        autoremove: yes
+
+    - name: 3. Instalar paquetes necesarios para el repositorio de Docker
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: 4a. Crear directorio /etc/apt/keyrings con permisos 0755
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'      
+
+    - name: 4b. Descargar la clave GPG de Docker (Mirror UCLV) y desarmarla
+      ansible.builtin.shell: |
+        curl -fsSL https://repos.uclv.edu.cu/docker-ce/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      args:
+        # Esto asegura que la tarea solo se ejecute si el archivo no existe
+        creates: /etc/apt/keyrings/docker.gpg
+
+    - name: 4c. Establecer permisos de lectura (a+r) en la clave GPG
+      ansible.builtin.file:
+        path: /etc/apt/keyrings/docker.gpg
+        mode: a+r
+        
+    - name: 5. Agregar el repositorio de Docker al sistema de APT (usando signed-by y mirror de UCLV)
+      ansible.builtin.apt_repository:
+        repo: deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://repos.uclv.edu.cu/docker-ce/linux/ubuntu {{ ansible_facts['distribution_release'] }} stable
+        state: present
+        # Le damos un nombre específico al archivo de lista para evitar conflictos
+        filename: docker
+
+    - name: 5b. Forzar la actualización del índice de APT después de agregar el repositorio
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: 6. Instalar la última versión de Docker Engine, CLI y containerd
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: latest
+        update_cache: yes
+      
+    - name: 7. Asegurarse de que el servicio de Docker esté corriendo y habilitado
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: 8. Configurar el demonio de Docker (daemon.json)
+      ansible.builtin.copy:
+        content: |
+          {
+            "insecure-registries": [
+              "docker.uclv.cu"
+            ],
+            "registry-mirrors": [
+              "http://docker.uclv.cu" 
+            ]
+          }
+        dest: /etc/docker/daemon.json
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - Reiniciar servicio de Docker
+
+    - name: 9. Añadir usuario remoto al grupo 'docker' (para ejecutar sin sudo)
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"  # Usará el usuario que ejecuta la conexión SSH (ej: ubuntu, ec2-user)
+        groups: docker
+        append: yes
+
+  handlers:
+    - name: Reiniciar servicio de Docker
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted

@@ -1,0 +1,34 @@
+global:
+  # Intervalo por defecto para raspar (scrape) métricas
+  scrape_interval: 15s 
+
+# Una lista de configuraciones de scraping para diferentes trabajos (jobs)
+scrape_configs:
+  # 1. Job para monitorear a Prometheus
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+scrape_configs:
+  # ... (tus jobs existentes)
+
+  #2. Job para monitorear Proxmox
+  - job_name: 'proxmox'
+    # La dirección de Prometheus es la del Exporter (que está en Docker o en tu host)
+    static_configs:
+      - targets: ['10.12.112.233'] # Usa 'pve_exporter' como nombre de host si está en el mismo docker-compose
+
+    metrics_path: /pve
+    params:
+      # El Exporter utiliza el parámetro 'target' para saber a qué nodo PVE debe consultar
+      target: ['10.12.112.233']
+    
+    # Esta sección es crucial: le dice a Prometheus que use el valor del 'target' (la IP de Proxmox) 
+    # como la etiqueta 'instance' para Grafana.
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 10.12.112.233:9221 # La dirección del Exporter

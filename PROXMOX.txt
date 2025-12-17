@@ -1,0 +1,12 @@
+https://10.12.112.233:8006/
+uclv
+N@VhvMf-KHkru2gf@k7v
+
+
+
+
+22aba644dc1c653833d23f143706213f
+
+API TOKEN PREOMETHEUS-GRAFANA
+Token ID: PVEAuditor@pve!exporter
+Secret: c9a198cf-e635-4551-b9f9-72423967468a
