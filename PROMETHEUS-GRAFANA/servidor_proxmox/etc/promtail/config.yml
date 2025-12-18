@@ -43,3 +43,4 @@ clients:
       - source_labels: [__path__]
         regex: '.*UPID:[^:]+:[^:]+:[^:]+:[^:]+:([^:]+):([^:]+):([^:]+):'
         target_label: user
+        replacement: '$3'
