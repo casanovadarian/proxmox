@@ -25,4 +25,21 @@ clients:
       labels:
         job: pve-tasks
         node: pm-132
-        __path__: /var/log/pve/tasks/**/*
+        # El asterisco simple /*/ es más seguro para evitar el error de "es un directorio"
+        __path__: /var/log/pve/tasks/*/UPID*
+
+    relabel_configs:
+      # Extraer la ACCIÓN (ej. qmstop)
+      - source_labels: [__path__]
+        regex: '.*UPID:[^:]+:[^:]+:[^:]+:[^:]+:([^:]+):([^:]+):([^:]+):'
+        target_label: pve_action
+        replacement: '$1'
+      # Extraer el ID de la VM/CT (ej. 111)
+      - source_labels: [__path__]
+        regex: '.*UPID:[^:]+:[^:]+:[^:]+:[^:]+:([^:]+):([^:]+):([^:]+):'
+        target_label: vmid
+        replacement: '$2'
+      # Extraer el USUARIO (ej. uclv@pve)
+      - source_labels: [__path__]
+        regex: '.*UPID:[^:]+:[^:]+:[^:]+:[^:]+:([^:]+):([^:]+):([^:]+):'
+        target_label: user
