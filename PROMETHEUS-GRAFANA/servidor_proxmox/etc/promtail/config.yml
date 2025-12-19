@@ -25,22 +25,18 @@ clients:
       labels:
         job: pve-tasks
         node: pm-132
-        # El asterisco simple /*/ es más seguro para evitar el error de "es un directorio"
         __path__: /var/log/pve/tasks/*/UPID*
 
-    relabel_configs:
-      # Extraer la ACCIÓN (ej. qmstop)
-      - source_labels: [__path__]
-        regex: '.*UPID:[^:]+:[^:]+:[^:]+:[^:]+:([^:]+):([^:]+):([^:]+):'
-        target_label: pve_action
-        replacement: '$1'
-      # Extraer el ID de la VM/CT (ej. 111)
-      - source_labels: [__path__]
-        regex: '.*UPID:[^:]+:[^:]+:[^:]+:[^:]+:([^:]+):([^:]+):([^:]+):'
-        target_label: vmid
-        replacement: '$2'
-      # Extraer el USUARIO (ej. uclv@pve)
-      - source_labels: [__path__]
-        regex: '.*UPID:[^:]+:[^:]+:[^:]+:[^:]+:([^:]+):([^:]+):([^:]+):'
-        target_label: user
-        replacement: '$3'
+    pipeline_stages:
+      # 1. Extraemos los datos de la ruta del archivo (__path__)
+      - source:
+          source_labels: [__path__]
+          # Regex mejorada: maneja campos vacíos (::) y separa el tag !terraform
+          regex: '.*UPID:[^:]+:[^:]+:[^:]+:[^:]+:(?P<pve_action>[^:]*):(?P<vmid>[^:]*):(?P<pve_user>[^:!]+)(?:!(?P<pve_source>[^:]+))?:'
+      
+      # 2. Convertimos lo extraído en etiquetas reales de Loki
+      - labels:
+          pve_action:
+          vmid:
+          pve_user:
+          pve_source:
