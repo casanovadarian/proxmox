@@ -1,0 +1,64 @@
+// --- 1. SECCIÓN DE TAREAS DE PROXMOX (UPID) ---
+
+local.file_match "pve_tasks_files" {
+    path_targets = [
+        {
+            "__address__" = "localhost",
+            "job"         = "pve-tasks",
+            "node"        = "pm-132",
+            "__path__"    = "/var/log/pve/tasks/*/UPID*",
+        },
+    ]
+}
+
+loki.source.file "pve_tasks_logs" {
+    targets    = local.file_match "pve_tasks_files".targets
+    forward_to = [loki.process.pve_tasks_parser.receiver]
+}
+
+loki.process "pve_tasks_parser" {
+    forward_to = [loki.write.local_loki.receiver]
+
+    // Extraemos las etiquetas de la ruta del archivo (__path__)
+    stage.regex {
+        source     = "__path__"
+        expression = "UPID:[^:]+:[^:]+:[^:]+:[^:]+:(?P<pve_action>[^:]*):(?P<vmid>[^:]*):(?P<pve_user>[^:!]+)(?:!(?P<pve_source>[^:]+))?:"
+    }
+
+    // Aplicamos las etiquetas a Loki
+    stage.labels {
+        values = {
+            pve_action = "",
+            vmid       = "",
+            pve_user   = "",
+            pve_source = "",
+        }
+    }
+}
+
+// --- 2. SECCIÓN DE LOGS DE SISTEMA (JOURNAL) ---
+
+loki.source.journal "system_logs" {
+    forward_to    = [loki.write.local_loki.receiver]
+    relabel_rules = loki.relabel.journal_node_label.receiver
+}
+
+loki.relabel "journal_node_label" {
+    forward_to = []
+    rule {
+        target_label = "node"
+        replacement  = "pm-132"
+    }
+    rule {
+        target_label = "job"
+        replacement  = "system-journal"
+    }
+}
+
+// --- 3. DESTINO FINAL (LOKI) ---
+
+loki.write "local_loki" {
+    endpoint {
+        url = "http://10.12.112.233:3100/loki/api/v1/push"
+    }
+}
