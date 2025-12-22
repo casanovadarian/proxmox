@@ -38,6 +38,25 @@ loki.process "pve_parser" {
 loki.source.journal "system_journal" {
     forward_to = [loki.write.loki_server.receiver]
 }
+// 4.1. Configuración de etiquetas (Relabeling)
+loki.relabel "journal_labels" {
+  forward_to = [loki.write.loki_server.receiver]
+
+// Define las etiquetas estáticas que tenías en Promtail
+  rule {
+    target_label = "job"
+    replacement  = "system-journal"
+  }
+  rule {
+    target_label = "node"
+    replacement  = "pm-132"
+  }
+    rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+}
+
 
 // --- 5. DESTINO (TU IP .235) ---
 loki.write "loki_server" {
