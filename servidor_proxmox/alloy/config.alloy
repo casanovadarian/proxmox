@@ -36,8 +36,8 @@ loki.process "pve_parser" {
 
 // --- 4. SISTEMA (JOURNAL) ---
 loki.source.journal "system_journal" {
-    forward_to = [loki.write.loki_server.receiver]
-}
+    forward_to = [loki.relabel.journal_labels.receiver]}
+
 // 4.1. Configuración de etiquetas (Relabeling)
 loki.relabel "journal_labels" {
   forward_to = [loki.write.loki_server.receiver]
@@ -55,6 +55,29 @@ loki.relabel "journal_labels" {
     source_labels = ["__journal__systemd_unit"]
     target_label  = "unit"
   }
+}
+
+loki.process "pve_auth_parser" {
+    forward_to = [loki.write.loki_server.receiver]
+
+    // Buscamos el patrón rhost= despues de authentication failure
+    stage.regex {
+        source     = "message"
+        expression = "rhost=(::ffff:)?(?P<remote_ip>[0-9a-fA-F:.]+)"
+    }
+
+    // Extraemos el usuario también, ya que lo tienes en el log
+    stage.regex {
+        source     = "message"
+        expression = "user=(?P<target_user>[^ ]+)"
+    }
+
+    stage.labels {
+        values = {
+            remote_ip   = "",
+            target_user = "",
+        }
+    }
 }
 
 
