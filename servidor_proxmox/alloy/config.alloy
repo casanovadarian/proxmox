@@ -20,7 +20,7 @@ loki.process "pve_parser" {
     forward_to = [loki.write.loki_server.receiver]
 
     stage.regex {
-        source     = "__path__"
+        source     = "filename"
         expression = "UPID:[^:]+:[^:]+:[^:]+:[^:]+:(?P<pve_action>[^:]*):(?P<vmid>[^:]*):(?P<pve_user>[^:!]+)(?:!(?P<pve_source>[^:]+))?:"
     }
 
