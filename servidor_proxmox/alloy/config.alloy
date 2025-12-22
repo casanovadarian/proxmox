@@ -19,39 +19,45 @@ loki.source.file "pve_source" {
 loki.process "pve_parser" {
     forward_to = [loki.write.loki_server.receiver]
 
+    // PASO 1: Forzamos que el campo 'path' se convierta en una etiqueta interna
     stage.regex {
         source     = "filename"
-        expression = "UPID:[^:]+:[^:]+:[^:]+:[^:]+:(?P<pve_action>[^:]*):(?P<vmid>[^:]*):(?P<pve_user>[^:!]+)(?:!(?P<pve_source>[^:]+))?:"
+        expression = "(?P<full_path>.*)"
     }
 
+    // PASO 2: Ahora sí, aplicamos la regex sobre esa nueva etiqueta 'full_path'
+    stage.regex {
+        source     = "full_path"
+        expression = ".*(?P<upid_string>UPID:[^:]+:[^:]+:[^:]+:[^:]+:(?P<pve_action>[^:]*):(?P<vmid>[^:]*):(?P<pve_user>[^:!]+))"
+    }
+
+    // PASO 3: Publicamos las etiquetas a Loki
     stage.labels {
         values = {
             pve_action = "",
             vmid       = "",
             pve_user   = "",
-            pve_source = "",
         }
     }
 }
 
 // --- 4. SISTEMA (JOURNAL) ---
 loki.source.journal "system_journal" {
-    forward_to = [loki.relabel.journal_labels.receiver]}
+    forward_to = [loki.relabel.journal_labels.receiver]
+}
 
-// 4.1. Configuración de etiquetas (Relabeling)
 loki.relabel "journal_labels" {
   forward_to = [loki.write.loki_server.receiver]
 
-// Define las etiquetas estáticas que tenías en Promtail
-  rule {
+rule {
     target_label = "job"
     replacement  = "system-journal"
   }
-  rule {
+rule {
     target_label = "node"
     replacement  = "pm-132"
   }
-    rule {
+rule {
     source_labels = ["__journal__systemd_unit"]
     target_label  = "unit"
   }
@@ -79,7 +85,6 @@ loki.process "pve_auth_parser" {
         }
     }
 }
-
 
 // --- 5. DESTINO (TU IP .235) ---
 loki.write "loki_server" {
