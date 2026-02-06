@@ -1,0 +1,38 @@
+####CREAR UNA PLANTILLA CLOUD-INIT####
+
+#1. Tener una imagen cloud
+wget https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img
+
+#2. Create a new virtual machine
+qm create 8000 --memory 2048 --core 2 --name ubuntu-cloud --net0 virtio,bridge=vmbr0
+
+#3. Import the downloaded Ubuntu disk to local storage (Change local to the storage of your choice)
+qm disk import 8000 focal-server-cloudimg-amd64.img local
+
+#4. Attach the new disk to the vm as a scsi drive on the scsi controller (Change local to the storage of your choice)
+qm set 8000 --scsihw virtio-scsi-pci --scsi0 local:vm-8000-disk-0
+
+#5. Add cloud init drive ((Change local to the storage of your choice)
+qm set 8000 --ide2 local:cloudinit
+
+#6. Add serial console
+qm set 8000 --serial0 socket --vga serial0
+
+##########################Troubleshooting######################
+#1. If you need to reset your machine-id
+
+sudo rm -f /etc/machine-id
+sudo rm -f /var/lib/dbus/machine-id
+
+#2. Then shut it down and do not boot it up.A new id will be generated the next time it boots.If it does not you can run:
+
+sudo systemd-machine-id-setup
+
+
+
+
+
+
+
+
+

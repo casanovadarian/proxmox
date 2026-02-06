@@ -1,0 +1,22 @@
+Eliminar Cluster PROXMOX
+
+1. Detener los servicios del cluster:
+systemctl stop pve-cluster
+systemctl stop corosync
+
+2. Forzar el sistema de archivos de Proxmox a modo local: Esto permite editar los archivos de configuración sin necesidad de quórum.
+pmxcfs -l
+
+3. Eliminar los archivos de configuración de Corosync:
+rm /etc/pve/corosync.conf
+rm -rf /etc/corosync/*
+
+4. Reiniciar el servicio del sistema de archivos y el nodo:
+killall pmxcfs
+systemctl start pve-cluster
+
+5. Limpieza de nodos fantasmas:
+rm -rf /etc/pve/nodes/NombreDelNodoAntiguo
+
+6. Reiniciar el servidor por completo:
+reboot

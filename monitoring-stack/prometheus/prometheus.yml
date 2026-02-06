@@ -9,9 +9,6 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-scrape_configs:
-  # ... (tus jobs existentes)
-
   #2. Job para monitorear Proxmox
   - job_name: 'proxmox'
     # La dirección de Prometheus es la del Exporter (que está en Docker o en tu host)
