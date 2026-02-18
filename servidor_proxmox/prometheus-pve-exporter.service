@@ -1,0 +1,14 @@
+[Unit]
+Description=Prometheus PVE Exporter
+After=network.target
+
+[Service]
+Type=simple
+User=root
+# Verifica que esta ruta sea la correcta de tu entorno virtual
+ExecStart=/opt/pve-exporter/bin/pve_exporter /etc/pve-exporter.yml
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

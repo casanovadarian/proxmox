@@ -33,7 +33,7 @@ Asigna Permisos: Asegúrate de que el usuario tenga el rol PVEAuditor en la ruta
         [Service]
         User=root
         # Apuntamos a la ruta del venv
-        ExecStart=/opt/prometheus-pve-exporter/venv/bin/pve-exporter --config-file /etc/prometheus/pve.yml
+        ExecStart=/opt/prometheus-pve-exporter/venv/bin/pve_exporter --config-file /etc/prometheus/pve.yml
         Restart=always
 
         [Install]
