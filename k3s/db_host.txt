@@ -1,0 +1,19 @@
+1- instalar postgresql
+apt install -y postgresql
+
+2- acceder a postgres
+sudo -u postgres psql
+
+3- crear base de dato y usuario para k3s
+-- 1. Crear la base de datos
+CREATE DATABASE k3s_db;
+
+-- 2. Crear el usuario dedicado
+CREATE USER k3s_user WITH ENCRYPTED PASSWORD 'TuPasswordSegura';
+
+-- 3. Otorgar todos los privilegios al usuario sobre esa base de datos
+GRANT ALL PRIVILEGES ON DATABASE k3s_db TO k3s_user;
+
+-- 4. (Recomendado para Postgres 15+) Conectarse y dar permisos en el esquema public
+\c k3s_db
+GRANT ALL ON SCHEMA public TO k3s_user;

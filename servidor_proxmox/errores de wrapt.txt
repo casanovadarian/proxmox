@@ -1,0 +1,44 @@
+1. Corregir errores de wrapt
+
+cat << 'EOF' > /opt/pve-exporter/lib/python3.11/site-packages/pve_exporter/scrape_metrics.py
+import wrapt
+from prometheus_client import Counter, Summary
+
+API_ERRORS = Counter('pve_api_errors_total', 'PVE API errors', ['method', 'url'])
+API_DURATION = Summary('pve_api_duration_seconds', 'PVE API duration', ['method', 'url'])
+
+@wrapt.patch_function_wrapper(module='proxmoxer.core', name='ProxmoxResource._request')
+def _api_metrics(wrapped, instance, args, kwargs):
+    # Captura métricas de la API de Proxmox
+    method = args[0] if args else "unknown"
+    url = instance._store.get("base_url", "unknown") if hasattr(instance, '_store') else "unknown"
+    
+    errors = API_ERRORS.labels(method, url)
+    duration = API_DURATION.labels(method, url)
+    
+    with errors.count_exceptions(), duration.time():
+        return wrapped(*args, **kwargs)
+
+@wrapt.patch_function_wrapper(module='proxmoxer.core', name='ProxmoxResourceBase.__getattr__')
+def _target_metrics(wrapped, instance, args, kwargs):
+    return wrapped(*args, **kwargs)
+EOF
+
+2. Instalar Gunicorn y las dependencias web faltantes
+apt update
+apt install gunicorn python3-flask python3-werkzeug python3-requests -y
+
+3. Comprobacion manual
+/opt/pve-exporter/bin/pve_exporter /etc/prometheus/pve.yml
+/opt/pve-exporter/bin/pve_exporter --config.file /etc/prometheus/pve.yml
+
+4. Activar el servicio de Systemd
+    # Limpiar el estado de fallo anterior
+systemctl reset-failed prometheus-pve-exporter
+systemctl daemon-reload
+    # Iniciar el servicio
+systemctl start prometheus-pve-exporter
+    # Verificar
+systemctl status prometheus-pve-exporter
+
+systemctl status prometheus-pve-exporter

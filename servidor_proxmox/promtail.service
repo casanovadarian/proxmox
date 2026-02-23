@@ -1,12 +1,12 @@
 [Unit]
-Description=Promtail service
+Description=Prometheus Proxmox Exporter
 After=network.target
 
 [Service]
 Type=simple
 User=root
-ExecStart=/usr/local/bin/promtail -config.file=/etc/promtail/config.yml
-Restart=on-failure
+ExecStart=/opt/pve-exporter/bin/pve_exporter --config.file=/etc/prometheus/pve.yml
+Restart=always
 
 [Install]
 WantedBy=multi-user.target

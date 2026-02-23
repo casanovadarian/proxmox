@@ -39,7 +39,7 @@ After=network.target
 Type=simple
 User=root
 # Verifica que esta ruta sea la correcta de tu entorno virtual
-ExecStart=/opt/pve-exporter/bin/pve_exporter /etc/pve-exporter.yml
+ExecStart=/opt/pve-exporter/bin/pve_exporter --config.file=/etc/pve-exporter.yml
 Restart=always
 RestartSec=5
 
