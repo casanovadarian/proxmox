@@ -17,3 +17,22 @@ GRANT ALL PRIVILEGES ON DATABASE k3s_db TO k3s_user;
 -- 4. (Recomendado para Postgres 15+) Conectarse y dar permisos en el esquema public
 \c k3s_db
 GRANT ALL ON SCHEMA public TO k3s_user;
+
+-- 5. (Opcional pero recomendado) Hazlo dueño de la base de datos para evitar futuros problemas
+ALTER DATABASE k3s_db OWNER TO k3s_user;
+
+exit
+
+4-Edita el archivo de configuración (la ruta puede variar según la versión, ej. 14, 15 o 16):
+nano /etc/postgresql/15/main/postgresql.conf
+sudo sed -i "s/^#listen_addresses = 'localhost'/listen_addresses = '*'/" /etc/postgresql/16/main/postgresql.conf
+
+5-¿El archivo pg_hba.conf permite la entrada?
+Postgres necesita permiso explícito para dejar entrar a un usuario desde una IP específica.
+#Edita el archivo:
+nano /etc/postgresql/15/main/pg_hba.conf
+#Añade esta línea al final para permitir a tus 3 nodos maestros:
+host    k3s_db      k3s_user    10.12.118.0/24    md5
+
+5. Reinicia y Prueba
+sudo systemctl restart postgresql

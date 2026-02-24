@@ -1,0 +1,84 @@
+1- en HOST LOCAL con internet descargar el binario de instalacion
+https://github.com/k3s-io/k3s/releases
+
+#descargar el binario
+curl -Lo /tmp/k3s https://github.com/k3s-io/k3s/releases/download/v1.26.5+k3s1/k3s
+
+2- copiar mediante scp el binario a cada master
+scp k3s-airgap-images-amd64.tar uclv@10.12.118.204:/tmp/
+scp /tmp/k3s uclv@10.12.118.204:/tmp/
+
+3- Preparar las imágenes en cada HOST K3S
+# Crear el directorio si no existe
+sudo mkdir -p /var/lib/rancher/k3s/agent/images/
+# Mover el tar que subiste
+sudo cp /tmp/k3s-airgap-images-amd64.tar /var/lib/rancher/k3s/agent/images/
+
+4- Instalar el binario de K3s
+#mover el binario
+sudo mv /tmp/k3s /usr/local/bin/k3s
+#establecer los permisos
+sudo chmod a+x /usr/local/bin/k3s
+
+5- El paso clave para que no salga a internet: Configurar el archivo registries.yaml
+#Crea el archivo en cada nodo maestro:
+sudo nano /etc/rancher/k3s/registries.yaml
+
+mirrors:
+  docker.io:
+    endpoint:
+      - "https://docker.uclv.cu"
+  "docker.uclv.cu":
+    endpoint:
+      - "https://docker.uclv.cu"
+
+#Importar las imágenes manualmente (Opcional pero recomendado)
+sudo k3s ctr images import /var/lib/rancher/k3s/agent/images/k3s-airgap-images-amd64.tar
+
+6- nicializar el Primer Maestro
+Como estás en modo manual/air-gap, usaremos variables de entorno para la instalación. El primer nodo definirá el TOKEN del cluster.
+#Ejecutar en el Nodo 1
+INSTALL_K3S_SKIP_DOWNLOAD=true \
+k3s server \
+  --datastore-endpoint="postgres://k3s_user:TuPassword@10.12.118.X:5432/k3s_db" \
+  --token="MI_TOKEN_SUPER_SECRETO" \
+  --node-ip=10.12.118.206 \
+  --tls-san=10.12.118.206
+
+  ##Otra alternativa##
+Configurar el archivo config.yaml
+Crea el directorio: sudo mkdir -p /etc/rancher/k3s
+Crea el archivo: sudo nano /etc/rancher/k3s/config.yaml
+Pega esto:
+token: "uclv"
+
+datastore-endpoint: "postgres://k3s_user:uclv@10.12.118.207:5432/k3s_db"
+node-ip: "10.12.118.206"
+tls-san:
+  - "10.12.118.206"
+pause-image: "rancher/mirrored-pause:3.6"
+airgap: true
+
+Luego, simplemente podrías ejecutar:
+INSTALL_K3S_SKIP_DOWNLOAD=true k3s server
+
+7. Unir los otros dos Maestros
+#Nodo 10.12.118.204
+INSTALL_K3S_SKIP_DOWNLOAD=true \
+k3s server \
+  --datastore-endpoint="postgres://k3s_user:TuPassword@10.12.118.X:5432/k3s_db" \
+  --token="MI_TOKEN_SUPER_SECRETO" \
+  --node-ip=10.12.118.204 \
+  --tls-san=10.12.118.204
+
+#Nodo 10.12.118.205
+  INSTALL_K3S_SKIP_DOWNLOAD=true \
+k3s server \
+  --datastore-endpoint="postgres://k3s_user:TuPassword@10.12.118.X:5432/k3s_db" \
+  --token="MI_TOKEN_SUPER_SECRETO" \
+  --node-ip=10.12.118.205 \
+  --tls-san=10.12.118.205
+
+
+  detener el proceso 
+  sudo pkill -f k3s
