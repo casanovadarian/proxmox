@@ -1,0 +1,54 @@
+#Crear uno o dos servidores para LB 
+1- Install HAProxy and KeepAlived:
+    sudo apt-get install haproxy keepalived
+
+2- Add the following to /etc/haproxy/haproxy.cfg on lb-1 and lb-2:
+
+frontend k3s-frontend
+    bind *:6443
+    mode tcp
+    option tcplog
+    default_backend k3s-backend
+
+backend k3s-backend
+    mode tcp
+    option tcp-check
+    balance roundrobin
+    default-server inter 10s downinter 5s
+    server server-1 10.12.118.202:6443 check
+    server server-2 10.12.118.203:6443 check
+    server server-3 10.12.118.204:6443 check
+
+3- Add the following to /etc/keepalived/keepalived.conf on lb-1 and lb-2:
+
+global_defs {
+  enable_script_security
+  script_user root
+}
+
+vrrp_script chk_haproxy {
+    script 'killall -0 haproxy' # faster than pidof
+    interval 2
+}
+
+vrrp_instance haproxy-vip {
+    interface eth1
+    state <STATE> # MASTER on lb-1, BACKUP on lb-2
+    priority <PRIORITY> # 200 on lb-1, 100 on lb-2
+
+    virtual_router_id 51
+
+    virtual_ipaddress {
+        10.12.118.100/24
+    }
+
+    track_script {
+        chk_haproxy
+    }
+}
+
+
+4- Restart HAProxy and KeepAlived on lb-1 and lb-2:
+    systemctl restart haproxy
+    systemctl restart keepalived
+
