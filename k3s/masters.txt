@@ -5,8 +5,8 @@ https://github.com/k3s-io/k3s/releases
   curl -Lo /tmp/k3s https://github.com/k3s-io/k3s/releases/download/v1.26.5+k3s1/k3s
 
 2- copiar mediante scp el binario a cada master
-  scp k3s-airgap-images-amd64.tar uclv@10.12.118.204:/tmp/
-  scp /tmp/k3s uclv@10.12.118.204:/tmp/
+  scp k3s-airgap-images-amd64.tar uclv@<IP_MASTER>:/tmp/
+  scp /tmp/k3s uclv@<IP_MASTER>:/tmp/
 
 3- Preparar las imágenes en cada HOST K3S
 # Crear el directorio si no existe
@@ -42,12 +42,12 @@ Crea el directorio: sudo mkdir -p /etc/rancher/k3s
 Crea el archivo: sudo nano /etc/rancher/k3s/config.yaml
 Pega esto:
 
-token: "uclv"
+token: "uclv"                   ###Establecer un token
 
 datastore-endpoint: "postgres://k3s_user:uclv@10.12.118.207:5432/k3s_db"   ###IP del DB
-node-ip: "10.12.118.202"            ###IP del NODO MAESTRO
+node-ip: "10.12.118.101"            ###IP del NODO MAESTRO
 tls-san:
-  - "10.12.118.202"                 ###IP del NODO MAESTRO 1
+  - "10.12.118.101"                 ###IP del NODO MAESTRO 
 pause-image: "rancher/mirrored-pause:3.6"
 airgap: true
 

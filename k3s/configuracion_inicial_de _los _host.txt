@@ -1,0 +1,36 @@
+1- Asignar password al root
+sudo passwd root
+
+2- Salir e iniciar sesion como root
+
+3- cambiar el nombre de ususario
+usermod -l <nombre_new> <nombre_actual>
+
+4- cambiar el password al usuario
+passwd <user>
+
+5- establecer nombre al host
+hostnamectl set-hostname <NOMBRE_HOST>
+
+6- establecer ip fija
+sudo nano /etc/netplan/50-cloud-init.yaml
+
+network:
+    ethernets:
+        ens18:
+            dhcp4: no
+            addresses:
+              - 10.12.118.202/24        ##IP fija
+            routes:
+              - to: default
+                via: 10.12.118.254      ##Puerta de enlace
+            nameservers:
+              addresses:
+                - 10.12.1.10            ##IP de DNS
+    version: 2
+
+7- Aplicar los cambios
+    sudo netplan apply
+
+8- iniciar sesion ssh desde la maquina local copiando la llave
+ssh-copy-id <user>@<IP>

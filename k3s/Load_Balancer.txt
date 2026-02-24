@@ -15,9 +15,9 @@ backend k3s-backend
     option tcp-check
     balance roundrobin
     default-server inter 10s downinter 5s
-    server server-1 10.12.118.202:6443 check
-    server server-2 10.12.118.203:6443 check
-    server server-3 10.12.118.204:6443 check
+    server server-1 10.12.118.101:6443 check        # direccion del master
+    server server-2 10.12.118.102:6443 check        # direccion del master
+    server server-3 10.12.118.103:6443 check        # direccion del master
 
 3- Add the following to /etc/keepalived/keepalived.conf on lb-1 and lb-2:
 
@@ -32,9 +32,9 @@ vrrp_script chk_haproxy {
 }
 
 vrrp_instance haproxy-vip {
-    interface eth1
-    state <STATE> # MASTER on lb-1, BACKUP on lb-2
-    priority <PRIORITY> # 200 on lb-1, 100 on lb-2
+    interface eth1              # usar el de la maquina
+    state <STATE> # MASTER on lb-1, BACKUP on lb-2          # usar el del lb en el que este
+    priority <PRIORITY> # 200 on lb-1, 100 on lb-2          # usar el del lb en el que este
 
     virtual_router_id 51
 
