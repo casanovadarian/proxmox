@@ -2,27 +2,25 @@
 https://github.com/k3s-io/k3s/releases
 
 #descargar el binario
-curl -Lo /tmp/k3s https://github.com/k3s-io/k3s/releases/download/v1.26.5+k3s1/k3s
+  curl -Lo /tmp/k3s https://github.com/k3s-io/k3s/releases/download/v1.26.5+k3s1/k3s
 
 2- copiar mediante scp el binario a cada master
-scp k3s-airgap-images-amd64.tar uclv@10.12.118.204:/tmp/
-scp /tmp/k3s uclv@10.12.118.204:/tmp/
+  scp k3s-airgap-images-amd64.tar uclv@10.12.118.204:/tmp/
+  scp /tmp/k3s uclv@10.12.118.204:/tmp/
 
 3- Preparar las imágenes en cada HOST K3S
 # Crear el directorio si no existe
-sudo mkdir -p /var/lib/rancher/k3s/agent/images/
+  sudo mkdir -p /var/lib/rancher/k3s/agent/images/
 # Mover el tar que subiste
-sudo cp /tmp/k3s-airgap-images-amd64.tar /var/lib/rancher/k3s/agent/images/
-
-4- Instalar el binario de K3s
+  sudo cp /tmp/k3s-airgap-images-amd64.tar /var/lib/rancher/k3s/agent/images/
 #mover el binario
-sudo mv /tmp/k3s /usr/local/bin/k3s
+  sudo mv /tmp/k3s /usr/local/bin/k3s
 #establecer los permisos
-sudo chmod a+x /usr/local/bin/k3s
+  sudo chmod a+x /usr/local/bin/k3s
 
 5- El paso clave para que no salga a internet: Configurar el archivo registries.yaml
 #Crea el archivo en cada nodo maestro:
-sudo nano /etc/rancher/k3s/registries.yaml
+  sudo nano /etc/rancher/k3s/registries.yaml
 
 mirrors:
   docker.io:
@@ -35,50 +33,79 @@ mirrors:
 #Importar las imágenes manualmente (Opcional pero recomendado)
 sudo k3s ctr images import /var/lib/rancher/k3s/agent/images/k3s-airgap-images-amd64.tar
 
-6- nicializar el Primer Maestro
+6- Inicializar el Primer Maestro
 Como estás en modo manual/air-gap, usaremos variables de entorno para la instalación. El primer nodo definirá el TOKEN del cluster.
-#Ejecutar en el Nodo 1
-INSTALL_K3S_SKIP_DOWNLOAD=true \
-k3s server \
-  --datastore-endpoint="postgres://k3s_user:TuPassword@10.12.118.X:5432/k3s_db" \
-  --token="MI_TOKEN_SUPER_SECRETO" \
-  --node-ip=10.12.118.206 \
-  --tls-san=10.12.118.206
-
-  ##Otra alternativa##
-Configurar el archivo config.yaml
+#Ejecutar en los NODOS MAESTROS
+-----------------------------
+6.1- Configurar el archivo config.yaml
 Crea el directorio: sudo mkdir -p /etc/rancher/k3s
 Crea el archivo: sudo nano /etc/rancher/k3s/config.yaml
 Pega esto:
+
 token: "uclv"
 
-datastore-endpoint: "postgres://k3s_user:uclv@10.12.118.207:5432/k3s_db"
-node-ip: "10.12.118.206"
+datastore-endpoint: "postgres://k3s_user:uclv@10.12.118.207:5432/k3s_db"   ###IP del DB
+node-ip: "10.12.118.202"            ###IP del NODO MAESTRO
 tls-san:
-  - "10.12.118.206"
+  - "10.12.118.202"                 ###IP del NODO MAESTRO 1
 pause-image: "rancher/mirrored-pause:3.6"
 airgap: true
 
-Luego, simplemente podrías ejecutar:
-INSTALL_K3S_SKIP_DOWNLOAD=true k3s server
+6.2- #Crear el servicio de Systemd manualmente
+  sudo nano /etc/systemd/system/k3s.service
+Pega este contenido:
 
-7. Unir los otros dos Maestros
-#Nodo 10.12.118.204
-INSTALL_K3S_SKIP_DOWNLOAD=true \
-k3s server \
-  --datastore-endpoint="postgres://k3s_user:TuPassword@10.12.118.X:5432/k3s_db" \
-  --token="MI_TOKEN_SUPER_SECRETO" \
-  --node-ip=10.12.118.204 \
-  --tls-san=10.12.118.204
+[Unit]
+Description=Lightweight Kubernetes
+Documentation=https://k3s.io
+After=network-online.target
 
-#Nodo 10.12.118.205
-  INSTALL_K3S_SKIP_DOWNLOAD=true \
-k3s server \
-  --datastore-endpoint="postgres://k3s_user:TuPassword@10.12.118.X:5432/k3s_db" \
-  --token="MI_TOKEN_SUPER_SECRETO" \
-  --node-ip=10.12.118.205 \
-  --tls-san=10.12.118.205
+[Service]
+Type=notify
+Environment=INSTALL_K3S_SKIP_DOWNLOAD=true
+ExecStart=/usr/local/bin/k3s server
+KillMode=process
+Delegate=yes
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Restart=always
+RestartSec=5
 
+[Install]
+WantedBy=multi-user.target
 
-  detener el proceso 
+#Activar la persistencia
+  sudo systemctl daemon-reload
+  sudo systemctl enable k3s
+  sudo systemctl start k3s
+  sudo systemctl status k3s
+
+###COMANDOS UTILES####
+------------------------
+1- #Detener el proceso 
   sudo pkill -f k3s
+
+2- #Desinstalar K3s:
+  /usr/local/bin/k3s-uninstall.sh
+
+3- #Añadir Nodos Agentes:Si quieres crear un clúster con varias máquinas, 
+#primero obtén el "token" del servidor principal:
+  sudo cat /var/lib/rancher/k3s/server/node-token
+#Luego, en la otra máquina Ubuntu, corre:
+  curl -sfL https://get.k3s.io | K3S_URL=https://<IP_DEL_SERVIDOR>:6443 K3S_TOKEN=<TU_TOKEN> sh -
+
+4- #Configurar el Acceso (Sin sudo)
+#Crea el directorio de configuración:
+  mkdir -p ~/.kube
+#Copia el archivo de configuración y cambia los permisos:
+  sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+  sudo chown $USER:$USER ~/.kube/config
+#(Opcional) Añade una variable de entorno en tu .bashrc:
+  export KUBECONFIG=~/.kube/config
+
+5- # Ver los nodos activos
+sudo k3s kubectl get nodes
+
