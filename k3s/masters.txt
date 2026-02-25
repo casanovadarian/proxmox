@@ -83,6 +83,39 @@ WantedBy=multi-user.target
   sudo systemctl start k3s
   sudo systemctl status k3s
 
+
+7- Para Balance de carga:
+7.1 en /etc/rancher/k3s/config.yaml
+Agregar:
+
+tls-san:
+  - "10.12.118.101"                 ###IP del NODO MAESTRO que ya estaba
+  - "10.12.118.100"                 ###IP virtual del LB
+
+7.2- Reiniciar los certificados tls
+sudo systemctl stop k3s
+sudo rm /var/lib/rancher/k3s/server/tls/dynamic-cert.json
+sudo rm /var/lib/rancher/k3s/server/tls/serving-kube-apiserver.*
+sudo systemctl start k3s
+
+7.3- comprobar que los certificados tls incluyen la VIP 
+openssl s_client -showcerts -connect 127.0.0.1:6443 < /dev/null 2>/dev/null | openssl x509 -text -noout | grep -A 1 "Subject Alternative Name"
+
+7.4 PROBAR LB DESDE PC LOCAL
+#copiar desde cualquier master el /etc/rancher/k3s/k3s.yml
+  sudo scp /etc/rancher/k3s/k3s.yaml darian@10.12.28.108:/home/darian/
+
+#En el k3s.yml que copiamos a local:
+# Cambia esto:
+
+server: https://127.0.0.1:6443
+# Por esto:
+server: https://10.12.118.100:6443  #IP virtual del LB
+
+#Comprobar LB desde pc local:
+kubectl get nodes --kubeconfig ./k3s.yaml -o wide
+
+
 ###COMANDOS UTILES####
 ------------------------
 1- #Detener el proceso 
@@ -109,3 +142,4 @@ WantedBy=multi-user.target
 5- # Ver los nodos activos
 sudo k3s kubectl get nodes
 
+kubectl get nodes -o wide

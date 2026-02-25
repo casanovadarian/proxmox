@@ -52,3 +52,23 @@ vrrp_instance haproxy-vip {
     systemctl restart haproxy
     systemctl restart keepalived
 
+#####COMPROBACIONES#####
+-------------------------
+1- Verificar la IP Virtual (VIP)
+ip addr show ens18          # Cambiar ens18 por tu interfaz de reload
+
+2- Verificar el Balanceo de Carga (HAProxy)
+nc -zv 10.12.118.100 6443           #Poner el VIP
+
+3. Prueba de Fuego: Alta Disponibilidad (Conmutación)
+Esta es la prueba real de que tu configuración es robusta:
+
+En una terminal, deja un ping constante a la VIP: ping 10.12.118.100.
+
+Apaga o reinicia lb-1 (sudo reboot).
+
+Observa el ping: Deberías perder solo 1 o 2 paquetes.
+
+Ve a lb-2 y ejecuta ip addr show ens18. Verás que la IP .100 ahora vive allí.
+
+Cuando lb-1 vuelva a encenderse, la IP regresará a él automáticamente porque tiene mayor prioridad (200 vs 100).
